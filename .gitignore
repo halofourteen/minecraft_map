@@ -1,0 +1,15 @@
+# Ignore map output directory (generated during build)
+map/*
+!map/.gitkeep
+
+# Exclude large/unnecessary Minecraft world files (optional)
+map_backup/*/stats/
+map_backup/*/advancements/
+map_backup/*/playerdata/
+map_backup/*/session.lock
+map_backup/*/*.lock
+
+# If using Git LFS, don't ignore these
+# But track them with Git LFS instead
+# (see .gitattributes)
+.DS_Store
