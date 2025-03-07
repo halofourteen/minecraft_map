@@ -1,8 +1,15 @@
 version: "3"
 
 services:
-  minecraft-map:
-    build: .
-    ports:
-      - "80:80"
-    restart: unless-stopped
+    minecraft-map:
+        build: .
+        container_name: minecraft-map
+        ports:
+            - "80:80"
+        volumes:
+            - ./map_backup:/app/map_backup:ro
+            - ./map:/app/map
+            - ./minecraft_assets:/app/minecraft_assets:ro
+        environment:
+            - TZ=UTC
+        restart: unless-stopped
