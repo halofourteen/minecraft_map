@@ -30,7 +30,8 @@ export PYTHONPATH="$OVERVIEWER_PATH:$PYTHONPATH"
 
 # Generate the Minecraft map using local Overviewer
 echo "Starting map generation..."
-python "$OVERVIEWER_PATH/overviewer.py" --config="$CONFIG_PATH"
+# Use the executable directly instead of looking for overviewer.py
+"$OVERVIEWER_PATH/overviewer" --config="$CONFIG_PATH"
 
 # Check if generation was successful
 if [ $? -ne 0 ]; then

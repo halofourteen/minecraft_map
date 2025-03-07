@@ -15,8 +15,9 @@ WORKDIR /app
 # Copy repository contents
 COPY . /app/
 
-# Ensure scripts are executable
-RUN chmod +x /app/*.sh
+# Ensure scripts and executables are executable
+RUN chmod +x /app/*.sh && \
+    chmod +x /app/overviwer/overviewer
 
 # Configure Nginx to serve static files
 RUN rm /etc/nginx/sites-enabled/default
