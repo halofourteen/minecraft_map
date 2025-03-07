@@ -8,6 +8,15 @@ DEST="$REPO_DIR/map_backup"
 # Log start time
 echo "Starting world backup at $(date)"
 
+# Check if running as root and switch to timmy if needed
+if [ "$(id -u)" = "0" ]; then
+    echo "This script should be run as timmy, not root."
+    echo "Please run: sudo chown -R timmy:timmy ~/minecraft_map"
+    echo "Then run: chmod +x ~/minecraft_map/*.sh"
+    echo "Then try again without sudo."
+    exit 1
+fi
+
 # Check if source exists
 if [ ! -d "$SOURCE" ]; then
     echo "Error: Source directory $SOURCE not found"
@@ -15,23 +24,44 @@ if [ ! -d "$SOURCE" ]; then
 
     # Look for other possible locations
     FOUND=false
-    for DIR in /var/lib/docker/volumes/*/; do
-        if ls "$DIR/_data" 2>/dev/null | grep -q "world\|server.properties"; then
-            echo "Potential Minecraft data found in: $DIR"
-            POSSIBLE_WORLDS=$(find "$DIR/_data" -type d -name "world" -o -name "aboba" -o -name "*world*")
-            if [ -n "$POSSIBLE_WORLDS" ]; then
-                echo "Possible world directories:"
-                echo "$POSSIBLE_WORLDS"
+
+    # Check common locations first
+    COMMON_PATHS=(
+        "/var/lib/docker/volumes/minecraft_data/_data"
+        "/var/lib/docker/volumes/minecraft/_data"
+        "/var/lib/docker/volumes/minecraft_server/_data"
+        "/var/lib/docker/volumes/mc_server_data/_data"
+    )
+
+    for PATH in "${COMMON_PATHS[@]}"; do
+        if [ -d "$PATH" ]; then
+            echo "Found potential Minecraft data at: $PATH"
+            if ls "$PATH" | grep -q "world\|level.dat"; then
+                echo "This looks like a Minecraft server directory!"
+                echo "Update your script to use: SOURCE=\"$PATH\""
                 FOUND=true
             fi
         fi
     done
 
     if [ "$FOUND" = false ]; then
-        echo "No potential Minecraft worlds found in Docker volumes."
-        echo "Please specify the correct path by editing the SOURCE variable in this script."
+        echo "Searching all Docker volumes (this may take a moment)..."
+        for DIR in /var/lib/docker/volumes/*/; do
+            if [ -d "$DIR/_data" ] && sudo ls "$DIR/_data" 2>/dev/null | grep -q "world\|server.properties"; then
+                echo "Potential Minecraft data found in: $DIR"
+                POSSIBLE_WORLDS=$(sudo find "$DIR/_data" -type d -name "world" -o -name "aboba" -o -name "*world*" 2>/dev/null)
+                if [ -n "$POSSIBLE_WORLDS" ]; then
+                    echo "Possible world directories:"
+                    echo "$POSSIBLE_WORLDS"
+                    FOUND=true
+                fi
+            fi
+        done
     fi
 
+    echo ""
+    echo "Please edit this script and update the SOURCE variable at the top"
+    echo "with the correct path to your Minecraft world."
     exit 1
 fi
 
@@ -39,15 +69,9 @@ fi
 echo "Navigating to repository directory..."
 cd $REPO_DIR || { echo "Error: Cannot cd to $REPO_DIR"; exit 1; }
 
-# Pull latest changes using timmy user
+# Pull latest changes
 echo "Pulling latest changes from GitHub..."
-if [ "$(id -u)" = "0" ]; then
-    # If running as root, use sudo to run git commands as timmy
-    sudo -u timmy git pull origin main
-else
-    # If running as timmy already, just run git directly
-    git pull origin main
-fi
+git pull origin main
 
 # Empty the destination directory
 echo "Preparing destination directory..."
@@ -57,12 +81,12 @@ else
     mkdir -p "$DEST"
 fi
 
-# Copy the world and set ownership/permissions
+# Copy the world - we might need sudo for this since it's in Docker volume dir
 echo "Copying Minecraft world files..."
-cp -r "$SOURCE"/* "$DEST"
+sudo cp -r "$SOURCE"/* "$DEST"
 if [ $? -eq 0 ]; then
     # Set ownership to timmy
-    chown -R timmy:timmy "$DEST"
+    sudo chown -R timmy:timmy "$DEST"
     chmod -R u+rwX "$DEST"
     echo "World copied successfully at $(date)"
 else
@@ -77,23 +101,13 @@ find "$DEST" -name "session.lock" -type f -delete
 find "$DEST" -path "*/stats/*" -type f -delete
 find "$DEST" -path "*/advancements/*" -type f -delete
 
-# Push changes to GitHub using timmy user
+# Push changes to GitHub
 echo "Committing changes..."
-if [ "$(id -u)" = "0" ]; then
-    # If running as root, use sudo to run git commands as timmy
-    sudo -u timmy git add map_backup
-    sudo -u timmy git commit -m "Daily map backup $(date)"
+git add map_backup
+git commit -m "Daily map backup $(date)"
 
-    echo "Pushing to GitHub..."
-    sudo -u timmy git push origin main
-else
-    # If running as timmy already, just run git directly
-    git add map_backup
-    git commit -m "Daily map backup $(date)"
-
-    echo "Pushing to GitHub..."
-    git push origin main
-fi
+echo "Pushing to GitHub..."
+git push origin main
 
 if [ $? -eq 0 ]; then
     echo "Map pushed to GitHub successfully at $(date)"
