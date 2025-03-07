@@ -42,13 +42,38 @@ This project involves two servers:
     ssh -T git@github.com
     ```
 
-5. Make the backup script executable:
+5. Configure the backup script for your Minecraft server:
+
+    First, identify the correct path to your Minecraft world data:
+
+    ```bash
+    # Find your Minecraft container ID
+    docker ps
+
+    # Inspect the container to find the volume mount points
+    docker inspect YOUR_CONTAINER_ID | grep -A 10 "Mounts"
+
+    # Check the world directory inside the container
+    docker exec YOUR_CONTAINER_ID ls -la /minecraft
+    ```
+
+    Then edit the `backup_and_push.sh` script if needed to update the paths:
+
+    ```bash
+    # Open the script in your favorite editor
+    nano backup_and_push.sh
+
+    # Update the SOURCE variable if your volume path is different
+    # Update the WORLD_PATH variable if your world is in a different location
+    ```
+
+6. Make the backup script executable:
 
     ```bash
     chmod +x backup_and_push.sh
     ```
 
-6. Set up a cron job to run the backup script periodically:
+7. Set up a cron job to run the backup script periodically:
     ```bash
     crontab -e
     ```
@@ -118,6 +143,12 @@ This project involves two servers:
 
 -   **Permission denied**: Make sure the user running the script has access to the Docker volume or container.
 -   **Git push fails**: Verify SSH keys are set up correctly and the user has write access to the repository.
+-   **No files copied**: Check if the world path in the script matches your Minecraft server's configuration. Run the script with `bash -x backup_and_push.sh` to see detailed debugging information.
+-   **Container path issues**: Different Minecraft server images use different paths for the world data. Common paths include:
+    -   `/minecraft/world`
+    -   `/minecraft/server/world`
+    -   `/data/world`
+    -   `/minecraft`
 
 ### Map Generation Issues
 
