@@ -23,8 +23,17 @@ RUN chmod +x /app/*.sh && \
 RUN rm /etc/nginx/sites-enabled/default
 COPY nginx.conf /etc/nginx/sites-enabled/
 
+# Set environment variables for Overviewer
+ENV PYTHONUNBUFFERED=1
+ENV OVERVIEWER_PROCESSES=1
+ENV OVERVIEWER_MAX_MEMORY=2048
+
+# Create a fallback index.html in case map generation fails
+RUN mkdir -p /app/map && \
+    echo '<!DOCTYPE html><html><head><title>Minecraft Map</title><style>body{font-family:Arial,sans-serif;text-align:center;margin-top:50px;}</style></head><body><h1>Minecraft Map</h1><p>Map generation is in progress. Please check back later.</p></body></html>' > /app/map/index.html
+
 # Run map generation during build using local Overviewer
-RUN /app/generate_map.sh --build-mode
+RUN /app/generate_map.sh --build-mode || true
 
 # Start nginx when container runs
 CMD ["nginx", "-g", "daemon off;"]

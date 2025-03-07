@@ -12,4 +12,11 @@ services:
             - ./minecraft_assets:/app/minecraft_assets:ro
         environment:
             - TZ=UTC
+            - OVERVIEWER_PROCESSES=1
+            - OVERVIEWER_MAX_MEMORY=2048
+        deploy:
+            resources:
+                limits:
+                    memory: 3G
+                    cpus: "1"
         restart: unless-stopped
