@@ -6,8 +6,14 @@ if [[ "$1" == "--build-mode" ]]; then
     BUILD_MODE=true
 fi
 
+# Set paths
+OVERVIEWER_PATH="/app/overviwer"
+CONFIG_PATH="/app/overviewer.conf"
+MAP_BACKUP_PATH="/app/map_backup"
+MAP_OUTPUT_PATH="/app/map"
+
 # Check if the map_backup directory has files
-if [ -z "$(ls -A /app/map_backup 2>/dev/null)" ]; then
+if [ -z "$(ls -A $MAP_BACKUP_PATH 2>/dev/null)" ]; then
     echo "Error: No world files found in map_backup directory."
     if [ "$BUILD_MODE" = true ]; then
         echo "This is build mode, exiting with error."
@@ -19,9 +25,12 @@ if [ -z "$(ls -A /app/map_backup 2>/dev/null)" ]; then
     fi
 fi
 
-# Generate the Minecraft map using Overviewer
+# Add Overviewer to Python path
+export PYTHONPATH="$OVERVIEWER_PATH:$PYTHONPATH"
+
+# Generate the Minecraft map using local Overviewer
 echo "Starting map generation..."
-overviewer.py --config=/app/overviewer.conf
+python "$OVERVIEWER_PATH/overviewer.py" --config="$CONFIG_PATH"
 
 # Check if generation was successful
 if [ $? -ne 0 ]; then

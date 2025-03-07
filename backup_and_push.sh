@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Set variables - this is the Docker volume path we need to access
+# Set variables - this is the exact Docker volume path
 SOURCE="/var/lib/docker/volumes/minecraft_server_data/_data/aboba"
 REPO_DIR="/home/timmy/minecraft_map"
 DEST="$REPO_DIR/map_backup"
@@ -8,13 +8,20 @@ DEST="$REPO_DIR/map_backup"
 # Log start time
 echo "Starting world backup at $(date)"
 
+# Make sure the script is executable
+chmod +x "$0"
+
 # Navigate to repo directory
 echo "Navigating to repository directory..."
 cd $REPO_DIR || { echo "Error: Cannot cd to $REPO_DIR"; exit 1; }
 
-# Pull latest changes from GitHub
+# Pull latest changes from GitHub preserving file permissions
 echo "Pulling latest changes from GitHub..."
+git config core.fileMode false  # Ignore permission changes
 git pull origin main
+
+# Make scripts executable again
+chmod +x *.sh
 
 # Prepare destination directory
 echo "Preparing destination directory..."
@@ -27,7 +34,7 @@ fi
 # Copy the world files using sudo (required to access Docker volumes)
 echo "Copying Minecraft world files using sudo..."
 if sudo test -d "$SOURCE"; then
-    sudo cp -r "$SOURCE"/* "$DEST"
+    sudo cp -r "$SOURCE"/* "$DEST"/
 
     # Change ownership to timmy
     sudo chown -R timmy:timmy "$DEST"
@@ -49,6 +56,7 @@ find "$DEST" -path "*/advancements/*" -type f -delete
 # Commit and push changes to GitHub
 echo "Committing changes..."
 git add map_backup
+git add "*.sh"  # Make sure our scripts are added with executable permission
 git commit -m "Daily map backup $(date)"
 
 echo "Pushing to GitHub..."
