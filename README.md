@@ -1,166 +1,128 @@
-# Minecraft Map Generator
+# Генератор карты Minecraft
 
-This repository contains scripts and configuration for automatically backing up a Minecraft world and generating an interactive map using the Overviewer tool.
+Этот проект позволяет создать интерактивную веб-карту вашего мира Minecraft локально на вашем компьютере.
 
-## System Overview
+## Требования
 
-This project involves two servers:
+-   Windows 10/11
+-   Python 3.8.10 или новее (рекомендуется: https://www.python.org/downloads/release/python-3810/)
+-   Минимум 8 ГБ оперативной памяти
 
-1. **Minecraft Server**: Runs the Minecraft server and periodically backs up the world data to this repository.
-2. **Map Server**: Pulls the world data from this repository and generates an interactive map using Overviewer.
+## Важно! Расположение проекта
 
-## Setup Instructions
+**Для корректной работы рекомендуется разместить проект ближе к корню диска, например:**
 
-### Minecraft Server Setup
+```
+C:\minecraft_map\
+```
 
-1. Clone this repository:
+Это поможет избежать проблем с длинными путями и кириллицей в пути.
 
-    ```bash
-    git clone https://github.com/halofourteen/minecraft_map.git
-    cd minecraft_map
-    ```
+## Установка и настройка
 
-2. Configure Git credentials (for automated pushing):
+### 1. Установка Python
 
-    ```bash
-    git config --global user.name "Your Name"
-    git config --global user.email "your.email@example.com"
-    ```
+1. Скачайте Python 3.8.10 или новее с официального сайта:
+   https://www.python.org/downloads/release/python-3810/
+2. Установите Python:
+    - Во время установки обязательно отметьте галочку "Add Python to PATH"
+    - После установки перезагрузите компьютер
+    - Убедитесь, что Python установлен, выполнив в командной строке:
+        ```
+        python --version
+        ```
 
-3. Set up SSH keys for passwordless GitHub access:
+### 2. Структура проекта
 
-    ```bash
-    ssh-keygen -t ed25519 -C "your.email@example.com"
-    cat ~/.ssh/id_ed25519.pub
-    ```
+Проект уже содержит все необходимые файлы и папки:
 
-    Add this key to your GitHub account settings.
+```
+minecraft_map/
+├── overviwer/           # Программа для генерации карты
+├── map_backup/          # Файлы мира Minecraft (уже включены)
+├── map/                 # Здесь будет сгенерированная карта
+└── minecraft_assets/    # Текстуры игры
+    └── 1.21.4_optifine/ # Папка с файлом client.jar
+```
 
-4. Test SSH connection:
+**Примечание:** Если вы хотите использовать свой мир Minecraft вместо предоставленного, замените содержимое папки `map_backup` файлами вашего мира.
 
-    ```bash
-    ssh -T git@github.com
-    ```
+### 3. Запуск генерации карты
 
-5. Configure the backup script for your Minecraft server:
+1. Откройте командную строку (cmd) или PowerShell в папке проекта
 
-    First, identify the correct path to your Minecraft world data:
-
-    ```bash
-    # Find your Minecraft container ID
-    docker ps
-
-    # Inspect the container to find the volume mount points
-    docker inspect YOUR_CONTAINER_ID | grep -A 10 "Mounts"
-
-    # Check the world directory inside the container
-    docker exec YOUR_CONTAINER_ID ls -la /minecraft
-    ```
-
-    Then edit the `backup_and_push.sh` script if needed to update the paths:
-
-    ```bash
-    # Open the script in your favorite editor
-    nano backup_and_push.sh
-
-    # Update the SOURCE variable if your volume path is different
-    # Update the WORLD_PATH variable if your world is in a different location
-    ```
-
-6. Make the backup script executable:
-
-    ```bash
-    chmod +x backup_and_push.sh
-    ```
-
-7. Set up a cron job to run the backup script periodically:
-    ```bash
-    crontab -e
-    ```
-    Add the following line to run the backup daily at 3 AM:
-    ```
-    0 3 * * * /path/to/minecraft_map/backup_and_push.sh >> /path/to/minecraft_map/backup.log 2>&1
-    ```
-
-### Map Server Setup
-
-1. Clone this repository:
-
-    ```bash
-    git clone https://github.com/halofourteen/minecraft_map.git
-    cd minecraft_map
-    ```
-
-2. Install Docker and Docker Compose:
-
-    ```bash
-    # For Ubuntu/Debian
-    sudo apt update
-    sudo apt install docker.io docker-compose
-    ```
-
-3. Set up a webhook or cron job to pull changes and rebuild the map:
-
-    Option 1: Using a cron job:
-
-    ```bash
-    crontab -e
-    ```
-
-    Add the following line to check for updates every hour:
+2. Запустите скрипт генерации карты:
 
     ```
-    0 * * * * cd /path/to/minecraft_map && git pull && docker-compose up -d --build
+    generate_map.bat
     ```
 
-    Option 2: Using a webhook (more efficient):
-    Install a webhook service like [webhook](https://github.com/adnanh/webhook) and configure it to pull and rebuild when GitHub sends a push notification.
+3. Дождитесь завершения генерации карты
+    - Время генерации зависит от размера мира (может занять от нескольких минут до часа)
+    - Прогресс генерации будет отображаться в консоли
 
-4. Start the map server:
-    ```bash
-    docker-compose up -d
+### 4. Просмотр карты
+
+-   После успешного завершения генерации откройте файл `map/index.html` в браузере
+-   Вы увидите интерактивную карту с вкладками для каждого измерения (обычный мир, Нижний мир, Край)
+
+## Настройка производительности
+
+Вы можете настроить количество используемых процессов для ускорения генерации карты:
+
+1. Откройте командную строку (cmd) или PowerShell
+
+2. Установите переменную окружения перед запуском скрипта:
+
+    ```
+    set OVERVIEWER_PROCESSES=4
+    generate_map.bat
     ```
 
-## How It Works
+    Где `4` - количество процессов (рекомендуется установить равным количеству ядер вашего процессора)
 
-### Backup Process (Minecraft Server)
+## Решение частых проблем
 
-1. The `backup_and_push.sh` script runs on the Minecraft server.
-2. It copies the world data from the Minecraft server's Docker volume.
-3. It removes unnecessary files to reduce size.
-4. It commits and pushes the changes to this GitHub repository.
+### Ошибка "Файл client.jar не найден"
 
-### Map Generation Process (Map Server)
+Убедитесь, что файл `client.jar` находится в папке `minecraft_assets/1.21.4_optifine/`. Если файл отсутствует:
 
-1. The Map Server detects changes to the repository.
-2. It pulls the latest world data.
-3. It runs the Overviewer tool to generate an interactive map.
-4. It serves the map via a web server.
+1. Скопируйте файл `client.jar` из папки `.minecraft/versions/1.21.4/` в папку `minecraft_assets/1.21.4_optifine/`
+2. Полный путь к файлу должен быть: `minecraft_map/minecraft_assets/1.21.4_optifine/client.jar`
 
-## Troubleshooting
+### Ошибка "Python не найден"
 
-### Backup Issues
+1. Убедитесь, что Python добавлен в переменную PATH:
+    - Откройте "Панель управления" -> "Система" -> "Дополнительные параметры системы" -> "Переменные среды"
+    - В разделе "Переменные среды пользователя" найдите переменную PATH
+    - Убедитесь, что путь к Python присутствует в списке
+    - Если нет, добавьте его и перезапустите командную строку
 
--   **Permission denied**: Make sure the user running the script has access to the Docker volume or container.
--   **Git push fails**: Verify SSH keys are set up correctly and the user has write access to the repository.
--   **No files copied**: Check if the world path in the script matches your Minecraft server's configuration. Run the script with `bash -x backup_and_push.sh` to see detailed debugging information.
--   **Container path issues**: Different Minecraft server images use different paths for the world data. Common paths include:
-    -   `/minecraft/world`
-    -   `/minecraft/server/world`
-    -   `/data/world`
-    -   `/minecraft`
+### Ошибка при запуске overviewer.exe
 
-### Map Generation Issues
+1. Убедитесь, что все файлы в папке `overviwer` имеют права на чтение и выполнение
+2. Попробуйте запустить overviewer.exe напрямую из командной строки:
+    ```
+    cd overviwer
+    overviewer.exe --help
+    ```
 
--   **Map not updating**: Check if the Docker container is running and if the webhook/cron job is working.
--   **Missing textures**: Ensure the Minecraft assets are correctly mounted in the container.
+### Карта не генерируется
 
-## Customization
+1. Проверьте, что путь к проекту не содержит кириллицу или специальные символы
+    - Лучше всего разместить проект в корне диска, например: `C:\minecraft_map\`
+2. Убедитесь, что в папке `map_backup` есть файл level.dat и папка region с файлами .mca
 
--   Edit `overviewer.conf` to customize map rendering options.
--   Modify `nginx.conf` to change web server settings.
--   Adjust `backup_and_push.sh` if your Minecraft server uses a different volume path.
+## Обновление карты
 
-## License
+Для обновления карты после изменений в мире Minecraft, просто запустите скрипт генерации карты снова:
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+```
+generate_map.bat
+```
+
+## Дополнительная информация
+
+-   Проект использует Minecraft Overviewer для генерации карты
+-   Подробная документация по Overviewer: https://docs.overviewer.org/
+-   Если у вас возникли проблемы, создайте issue в репозитории проекта
