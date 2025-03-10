@@ -38,7 +38,7 @@ if %ERRORLEVEL% NEQ 0 (
 
 REM Set the number of processes to use (default to 1 if not set)
 if not defined OVERVIEWER_PROCESSES (
-    set OVERVIEWER_PROCESSES=1
+    set OVERVIEWER_PROCESSES=12
 )
 
 REM Create the map directory if it doesn't exist

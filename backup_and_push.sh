@@ -104,13 +104,27 @@ fi
 echo "Files in backup directory:"
 ls -la "$DEST"
 
-# Remove unnecessary files to reduce size
-echo "Removing unnecessary files to reduce size..."
+# Check for important dimension directories
+echo "Checking for dimension directories..."
+if [ -d "$DEST/DIM-1" ]; then
+    echo "Found Nether dimension (DIM-1)"
+    ls -la "$DEST/DIM-1"
+else
+    echo "Warning: Nether dimension (DIM-1) not found"
+fi
+
+if [ -d "$DEST/DIM1" ]; then
+    echo "Found End dimension (DIM1)"
+    ls -la "$DEST/DIM1"
+else
+    echo "Warning: End dimension (DIM1) not found"
+fi
+
+# Remove only unnecessary files to reduce size
+# DO NOT remove any dimension directories or their contents
+echo "Removing only unnecessary files to reduce size..."
 find "$DEST" -name "*.lock" -type f -delete
 find "$DEST" -name "session.lock" -type f -delete
-find "$DEST" -path "*/stats/*" -type f -delete
-find "$DEST" -path "*/advancements/*" -type f -delete
-find "$DEST" -path "*/playerdata/*" -type f -delete
 
 # Commit and push changes to GitHub
 echo "Committing changes..."
