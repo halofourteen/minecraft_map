@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Set variables
-SOURCE="/var/lib/docker/volumes/minecraft_server_data/_data/aboba"
+SOURCE="/var/lib/docker/volumes/minecraft_server_universal_data/_data/aboba"
 REPO_DIR="$HOME/minecraft_map"
 DEST="$REPO_DIR/map_backup"
 
@@ -27,7 +27,7 @@ rm -rf "$DEST"/*
 # Copy the world files using docker cp instead of direct volume access
 # This is more secure and avoids permission issues
 echo "Copying Minecraft world files..."
-CONTAINER_ID=$(docker ps -qf "volume=minecraft_server_data")
+CONTAINER_ID=$(docker ps -qf "volume=minecraft_server_universal_data")
 
 if [ -n "$CONTAINER_ID" ]; then
     # If container is running, use docker cp
@@ -119,12 +119,6 @@ if [ -d "$DEST/DIM1" ]; then
 else
     echo "Warning: End dimension (DIM1) not found"
 fi
-
-# Remove only unnecessary files to reduce size
-# DO NOT remove any dimension directories or their contents
-echo "Removing only unnecessary files to reduce size..."
-find "$DEST" -name "*.lock" -type f -delete
-find "$DEST" -name "session.lock" -type f -delete
 
 # Commit and push changes to GitHub
 echo "Committing changes..."
