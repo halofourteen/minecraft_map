@@ -1,15 +1,12 @@
 #!/bin/bash
 
-# Set variables - Change these for different server backups
-VOLUME_NAME="minecraft_server_universal_data"
-WORLD_NAME="aboba"
-SOURCE="/var/lib/docker/volumes/${VOLUME_NAME}/_data/${WORLD_NAME}"
+# Set variables
+SOURCE="/var/lib/docker/volumes/minecraft_server_data/_data/aboba"
 REPO_DIR="$HOME/minecraft_map"
 DEST="$REPO_DIR/map_backup"
 
 # Log start time
 echo "Starting world backup at $(date)"
-echo "Backing up world from: ${SOURCE}"
 
 # Make sure the script is executable
 chmod +x "$0"
@@ -18,25 +15,83 @@ chmod +x "$0"
 echo "Navigating to repository directory..."
 cd "$REPO_DIR" || { echo "Error: Cannot cd to $REPO_DIR"; exit 1; }
 
-# Handle Git more safely - stash any changes first
-echo "Handling local Git changes..."
-git stash
+# Pull latest changes from GitHub
+echo "Pulling latest changes from GitHub..."
 git pull origin main
-git stash pop || true # Don't fail if there's nothing to pop
 
 # Prepare destination directory
 echo "Preparing destination directory..."
 mkdir -p "$DEST"
 rm -rf "$DEST"/*
 
-# Copy directly from the volume (most reliable method)
-echo "Copying Minecraft world files from volume..."
-if [ -d "$SOURCE" ] && [ "$(ls -A "$SOURCE" 2>/dev/null)" ]; then
+# Copy the world files using docker cp instead of direct volume access
+# This is more secure and avoids permission issues
+echo "Copying Minecraft world files..."
+CONTAINER_ID=$(docker ps -qf "volume=minecraft_server_data")
+
+if [ -n "$CONTAINER_ID" ]; then
+    # If container is running, use docker cp
+    # First, check if the world directory exists in the container
+    WORLD_PATH="/minecraft/aboba"
+    
+    # Check if the world directory exists in the container
+    if docker exec "$CONTAINER_ID" test -d "$WORLD_PATH"; then
+        echo "Found world at $WORLD_PATH in container $CONTAINER_ID"
+        docker cp "$CONTAINER_ID:$WORLD_PATH/." "$DEST/"
+        
+        # Verify the copy was successful
+        if [ $? -eq 0 ] && [ "$(ls -A "$DEST" 2>/dev/null)" ]; then
+            echo "World copied successfully using docker cp at $(date)"
+        else
+            echo "Error: Docker cp command failed or no files were copied."
+            echo "Trying direct volume access as fallback..."
+            if [ -d "$SOURCE" ] && [ "$(ls -A "$SOURCE" 2>/dev/null)" ]; then
+                sudo cp -r "$SOURCE"/* "$DEST"/
+                sudo chown -R $(whoami):$(whoami) "$DEST"
+                echo "World copied successfully using direct volume access at $(date)"
+            else
+                echo "Error: Both docker cp and direct volume access failed. Cannot access world data."
+                exit 1
+            fi
+        fi
+    else
+        echo "World directory not found at $WORLD_PATH in container. Checking other common paths..."
+        
+        # Try to find the world directory by listing common Minecraft server paths
+        POSSIBLE_PATHS=("/minecraft" "/minecraft/world" "/minecraft/server/world" "/data/world" "/data")
+        FOUND=false
+        
+        for PATH_TO_CHECK in "${POSSIBLE_PATHS[@]}"; do
+            echo "Checking $PATH_TO_CHECK..."
+            if docker exec "$CONTAINER_ID" test -d "$PATH_TO_CHECK"; then
+                echo "Found potential world directory at $PATH_TO_CHECK"
+                # List contents to help identify the world directory
+                docker exec "$CONTAINER_ID" ls -la "$PATH_TO_CHECK"
+                FOUND=true
+            fi
+        done
+        
+        if [ "$FOUND" = false ]; then
+            echo "Could not find world directory in container. Trying direct volume access..."
+        fi
+        
+        # Try direct volume access as fallback
+        if [ -d "$SOURCE" ] && [ "$(ls -A "$SOURCE" 2>/dev/null)" ]; then
+            sudo cp -r "$SOURCE"/* "$DEST"/
+            sudo chown -R $(whoami):$(whoami) "$DEST"
+            echo "World copied successfully using direct volume access at $(date)"
+        else
+            echo "Error: Cannot access Minecraft world data. Please check the paths and permissions."
+            exit 1
+        fi
+    fi
+elif [ -d "$SOURCE" ] && [ "$(ls -A "$SOURCE" 2>/dev/null)" ]; then
+    # Fallback to direct volume access if needed
     sudo cp -r "$SOURCE"/* "$DEST"/
     sudo chown -R $(whoami):$(whoami) "$DEST"
-    echo "World copied successfully from volume at $(date)"
+    echo "World copied successfully using direct volume access at $(date)"
 else
-    echo "Error: Cannot access Minecraft world data at ${SOURCE}. Please check the path and permissions."
+    echo "Error: Cannot access Minecraft world data. Container not found and source directory not accessible."
     exit 1
 fi
 
